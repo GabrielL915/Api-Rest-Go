@@ -19,16 +19,20 @@ func main() {
 	addr := ":8080"
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatal("listener error: ", err.Error())
+		log.Fatalf("Error occurred: %s", err.Error())
 	}
-	dbUser, dbPassword, dbName := os.Getenv("POSTGRES_USER"), os.Getenv("POSTGRES_PASSWORD"), os.Getenv("POSTGRES_DB")
-	dbInstance, err := db.Initialize(dbUser, dbPassword, dbName)
-	if err != nil {
-		log.Fatal("database error: ", err.Error())
-	}
-	defer dbInstance.Conn.Close()
 
-	httpHandler := handler.NewHandler(dbInstance)
+	dbUser, dbPassword, dbName :=
+		os.Getenv("POSTGRES_USER"),
+		os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_DB")
+	database, err := db.Initialize(dbUser, dbPassword, dbName)
+	if err != nil {
+		log.Fatalf("Could not set up database: %v", err)
+	}
+	defer database.Conn.Close()
+
+	httpHandler := handler.NewHandler(database)
 	server := &http.Server{
 		Handler: httpHandler,
 	}
@@ -38,18 +42,20 @@ func main() {
 	}()
 
 	defer Stop(server)
-	log.Printf("Server listening on %s", addr)
+
+	log.Printf("Started server on %s", addr)
+
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	log.Println(fmt.Sprint(<-ch))
-	log.Println("Shutting down server...")
+	log.Println("Stopping API server.")
 }
 
 func Stop(server *http.Server) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server shutdown failed: %v", err)
+		log.Printf("Could not shut down server correctly: %v\n", err)
 		os.Exit(1)
 	}
 }

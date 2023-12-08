@@ -1,4 +1,5 @@
 version: "3.7"
+
 services:
   database:
     image: postgres
@@ -9,6 +10,7 @@ services:
       - "5432:5432"
     volumes:
       - data:/var/lib/postgresql/data
+
   server:
     build:
       context: .
@@ -19,6 +21,6 @@ services:
     networks:
       - default
     ports:
-    - "8080:8080"
+    - "3000:3000"
 volumes:
   data:
